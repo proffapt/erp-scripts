@@ -19,4 +19,5 @@ Collection of my own ERP automation scripts.
 
 ## Configuration
 
-These scripts are concise and simple because they utilise my [iitkgp-erp-login](https://github.com/proffapt/iitkgp-erp-login-pypi) package for handling the login process in ERP. And it has some pre-requisites to be satisfied, read its [documentation](https://github.com/proffapt/iitkgp-erp-login-pypi#readme) for understanding what and how to do.
+- These scripts are concise and simple because they utilise my [iitkgp-erp-login](https://github.com/proffapt/iitkgp-erp-login-pypi) package for handling the login process in ERP. And it has some pre-requisites to be satisfied, read its [documentation](https://github.com/proffapt/iitkgp-erp-login-pypi#readme) for understanding what and how to do.
+- Change the `shebang` (the very first line of the file) for every file with the path to `python3` on your system.
