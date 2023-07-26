@@ -1,0 +1,92 @@
+#!/opt/homebrew/bin/python3
+
+import os
+import sys
+import json
+import erpcreds
+import requests
+import argparse
+from datetime import datetime 
+import iitkgp_erp_login.erp as erp
+import xml.etree.ElementTree as ET
+from bs4 import BeautifulSoup as bs
+import iitkgp_erp_login.utils as utils
+from iitkgp_erp_login.endpoints import HOMEPAGE_URL
+
+# Global variables and objects
+companies_file = f"{os.path.dirname(__file__)}/companies.json"
+TPSTUDENT_URL = 'https://erp.iitkgp.ac.in/TrainingPlacementSSO/TPStudent.jsp'
+COMPANIES_URL = 'https://erp.iitkgp.ac.in/TrainingPlacementSSO/ERPMonitoring.htm?action=fetchData&jqqueryid=37&_search=false&nd=1448725351715&rows=20&page=1&sidx=&sord=asc&totalrows=50'
+headers = {
+    'timeout': '20',
+    'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Ubuntu Chromium/51.0.2704.79 Chrome/51.0.2704.79 Safari/537.36',
+}
+session = requests.Session()
+
+def parse_args():
+    parser = argparse.ArgumentParser(description="Fetch companies, queried based on their status from CDC portal")
+    parser.add_argument('-o', '--open', action='store_true', help='Query for companies currently open for CV submission')
+    parser.add_argument('-a', '--applied', action='store_true', help='Query for companies you have applied to')
+    return parser.parse_args()
+
+def applied(companies, ssoToken):
+    print('>> [Listing Applied Companies]')
+    for company in companies:
+        if company['Application_Status'] == 'Y':
+            print(f"[APPLIED : {company['Index']}] {company['Name']}")
+
+def _open(companies, ssoToken):
+    print('>> [Listing Open Companies]')
+    current_time = datetime.now()
+    for company in companies:
+        deadline = datetime.strptime(company['End_Date'], '%d-%m-%Y %H:%M')
+        if current_time < deadline:
+            print(f"[OPEN : {company['Index']}] {company['Name']} | [APPLICATION STATUS : {company['Application_Status']}] | {company['Job_Description']}&ssoToken={ssoToken}")
+
+def main():
+    args = parse_args() # Arguments parser
+    
+    # Getting existing companies
+    companies = []
+    if os.path.exists(companies_file):
+        with open(companies_file, 'r') as json_file:
+            companies = json.load(json_file)
+            
+    print('>> [Syncing with ERP]')
+    sessionToken, ssoToken = erp.login(headers, session, ERPCREDS=erpcreds, OTP_CHECK_INTERVAL=2, SESSION_STORAGE_FILE=".companies_session")
+    session.post(TPSTUDENT_URL, data=dict(ssoToken=ssoToken, menu_id=11, module_id=26), headers=headers)
+    r = session.get(COMPANIES_URL, headers=headers)
+
+    soup = bs(r.text, features="xml")
+    xml_string = soup.prettify()
+    xml_encoded = xml_string.encode('utf-8')
+    root = ET.fromstring(xml_encoded)
+
+    for row in root.findall('row'):
+        jd_args = row.find('cell[4]').text.split("'")[5].split('"');
+        jd_args = [jd_args[1],  jd_args[3], jd_args[5]]
+        company_info = {
+            'Index': int(row.get('id')) + 1,
+            'Name': row.find('cell[1]').text.split('>')[1].split('<')[0].strip(),
+            'Salary': row.find('cell[6]').text.strip(),
+            'Job_Description': f'https://erp.iitkgp.ac.in/TrainingPlacementSSO/TPJNFView.jsp?jnf_id={jd_args[0]}&com_id={jd_args[1]}&yop={jd_args[2]}&user_type=SU&rollno={erpcreds.ROLL_NUMBER}',
+            'Application_Status': row.find('cell[9]').text.strip() if row.find('cell[9]').text.strip() else 'N',
+            'Start_Date': row.find('cell[10]').text.strip(),
+            'End_Date': row.find('cell[11]').text.strip(),
+        }
+        if company_info not in companies:
+            print(f"[NEW : {company_info['Index']}] {company_info['Name']} | {company_info['Job_Description']}&ssoToken={ssoToken}")
+            companies.append(company_info)
+
+    # Open and Applied queries
+    if args.open:
+        _open(companies, ssoToken)
+    if args.applied:
+        applied(companies, ssoToken)
+        
+    print('>> [Updating localDB]')
+    with open(companies_file, 'w') as json_file:
+        json.dump(companies, json_file, indent=2)
+
+if __name__ == "__main__":
+    main()
