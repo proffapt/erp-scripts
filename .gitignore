@@ -1,0 +1,11 @@
+# Garbage
+.DS_Store
+.vscode/
+__pycache__/
+
+# Sessions
+.*session
+
+# Credentials and data
+*.json
+*.py
