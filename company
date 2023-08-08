@@ -33,7 +33,7 @@ def applied(companies, ssoToken):
     print('>> [Listing Applied Companies]')
     for company in companies:
         if company['Application_Status'] == 'Y':
-            print(f"[APPLIED : {company['Index']}] {company['Name']}")
+            print(f"[APPLIED] {company['Name']}")
 
 def _open(companies, ssoToken):
     print('>> [Listing Open Companies]')
@@ -41,7 +41,7 @@ def _open(companies, ssoToken):
     for company in companies:
         deadline = datetime.strptime(company['End_Date'], '%d-%m-%Y %H:%M')
         if current_time < deadline:
-            print(f"[OPEN : {company['Index']}] {company['Name']} | [APPLICATION STATUS : {company['Application_Status']}] | {company['Job_Description']}&ssoToken={ssoToken}")
+            print(f"[OPEN] {company['Name']} | [APPLICATION STATUS : {company['Application_Status']}] | {company['Job_Description']}&ssoToken={ssoToken}")
 
 def main():
     args = parse_args() # Arguments parser
@@ -66,7 +66,6 @@ def main():
         jd_args = row.find('cell[4]').text.split("'")[5].split('"');
         jd_args = [jd_args[1],  jd_args[3], jd_args[5]]
         company_info = {
-            'Index': int(row.get('id')) + 1,
             'Name': row.find('cell[1]').text.split('>')[1].split('<')[0].strip(),
             'Salary': row.find('cell[6]').text.strip(),
             'Job_Description': f'https://erp.iitkgp.ac.in/TrainingPlacementSSO/TPJNFView.jsp?jnf_id={jd_args[0]}&com_id={jd_args[1]}&yop={jd_args[2]}&user_type=SU&rollno={erpcreds.ROLL_NUMBER}',
@@ -75,7 +74,7 @@ def main():
             'End_Date': row.find('cell[11]').text.strip(),
         }
         if company_info not in companies:
-            print(f"[NEW : {company_info['Index']}] {company_info['Name']} | {company_info['Job_Description']}&ssoToken={ssoToken}")
+            print(f"[NEW] {company_info['Name']} | {company_info['Job_Description']}&ssoToken={ssoToken}")
             companies.append(company_info)
 
     # Open and Applied queries
