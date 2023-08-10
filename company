@@ -6,7 +6,7 @@ import json
 import erpcreds
 import requests
 import argparse
-from datetime import datetime 
+from datetime import datetime, timedelta 
 import iitkgp_erp_login.erp as erp
 import xml.etree.ElementTree as ET
 from bs4 import BeautifulSoup as bs
@@ -27,13 +27,28 @@ def parse_args():
     parser = argparse.ArgumentParser(description="Fetch companies, queried based on their status from CDC portal")
     parser.add_argument('-o', '--open', action='store_true', help='Query for companies currently open for CV submission')
     parser.add_argument('-a', '--applied', action='store_true', help='Query for companies you have applied to')
+    parser.add_argument('-aa', '--applied-available', action='store_true', help='Query for companies you have applied to and they are still opoen')
     return parser.parse_args()
 
-def applied(companies, ssoToken):
+def applied(companies):
     print('>> [Listing Applied Companies]')
     for company in companies:
         if company['Application_Status'] == 'Y':
             print(f"[APPLIED] {company['Name']}")
+
+def exam(companies):
+    print('>> [Listing Applied Companies with Remaining OA]')
+    current_time = datetime.now()
+    for company in companies:
+        if company['Application_Status'] == 'Y':
+            exam_date = datetime.strptime(company['Exam_Date'], '%d-%m-%Y %H:%M') if company['Exam_Date'] else None
+            if exam_date is not None:
+                exam_date += timedelta(days=1)
+                
+            if exam_date == None:
+                print(f"[APPLIED : AVAILABLE] {company['Name']}")
+            elif current_time < exam_date:
+                print(f"[APPLIED : AVAILABLE] {company['Name']}")
 
 def _open(companies, ssoToken):
     print('>> [Listing Open Companies]')
@@ -72,6 +87,7 @@ def main():
             'Application_Status': row.find('cell[9]').text.strip() if row.find('cell[9]').text.strip() else 'N',
             'Start_Date': row.find('cell[10]').text.strip(),
             'End_Date': row.find('cell[11]').text.strip(),
+            'Exam_Date': row.find('cell[12]').text.strip(),
         }
         if company_info not in companies:
             print(f"[NEW] {company_info['Name']} | {company_info['Job_Description']}&ssoToken={ssoToken}")
@@ -81,7 +97,9 @@ def main():
     if args.open:
         _open(companies, ssoToken)
     if args.applied:
-        applied(companies, ssoToken)
+        applied(companies)
+    if args.applied_available:
+        exam(companies)
         
     print('>> [Updating localDB]')
     with open(companies_file, 'w') as json_file:
