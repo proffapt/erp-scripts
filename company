@@ -37,11 +37,11 @@ def applied(companies):
             print(f"[APPLIED] {company['Name']}")
 
 def exam(companies):
-    print('>> [Listing Applied Companies with Remaining OA]')
+    print('>> [Listing Applied Companies with remaining Interview]')
     current_time = datetime.now()
     for company in companies:
         if company['Application_Status'] == 'Y':
-            exam_date = datetime.strptime(company['Exam_Date'], '%d-%m-%Y %H:%M') if company['Exam_Date'] else None
+            exam_date = datetime.strptime(company['Interview_Date'], '%d-%m-%Y %H:%M') if company['Interview_Date'] else None
             if exam_date is not None:
                 exam_date += timedelta(days=1)
                 
@@ -87,7 +87,7 @@ def main():
             'Application_Status': row.find('cell[9]').text.strip() if row.find('cell[9]').text.strip() else 'N',
             'Start_Date': row.find('cell[10]').text.strip(),
             'End_Date': row.find('cell[11]').text.strip(),
-            'Exam_Date': row.find('cell[12]').text.strip(),
+            'Interview_Date': row.find('cell[12]').text.strip(),
         }
         
         job_desc_exists = False
@@ -101,10 +101,10 @@ def main():
             companies.append(company_info)
 
     for company in companies:
-        if not company['Exam_Date']:
+        if not company['Interview_Date']:
             for c in companies:
-                if c['Name'] == company['Name'] and c['Exam_Date']:
-                    company['Exam_Date'] = c['Exam_Date']
+                if c['Name'] == company['Name'] and c['Interview_Date']:
+                    company['Interview_Date'] = c['Interview_Date']
                     break
 
     # Open and Applied queries
