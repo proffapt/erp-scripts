@@ -89,9 +89,23 @@ def main():
             'End_Date': row.find('cell[11]').text.strip(),
             'Exam_Date': row.find('cell[12]').text.strip(),
         }
-        if company_info not in companies:
-            print(f"[NEW] {company_info['Name']} | {company_info['Job_Description']}&ssoToken={ssoToken}")
+        
+        job_desc_exists = False
+        for comp in companies:
+            if comp['Job_Description'] == company_info['Job_Description']:
+                job_desc_exists = True
+                break
+
+        if not job_desc_exists:
+            print(f"[NEW] {company_info['Name']} | {company_info['Job_Description']}&ssoToken={ssoToken}") 
             companies.append(company_info)
+
+    for company in companies:
+        if not company['Exam_Date']:
+            for c in companies:
+                if c['Name'] == company['Name'] and c['Exam_Date']:
+                    company['Exam_Date'] = c['Exam_Date']
+                    break
 
     # Open and Applied queries
     if args.open:
