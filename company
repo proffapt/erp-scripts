@@ -93,13 +93,16 @@ def main():
         job_desc_exists = False
         for comp in companies:
             if comp['Job_Description'] == company_info['Job_Description']:
+                comp['Application_Status'] = company_info['Application_Status']
+                comp['End_Date'] = company_info['End_Date']
+                comp['Interview_Date'] = company_info['Interview_Date']
                 job_desc_exists = True
                 break
 
         if not job_desc_exists:
             print(f"[NEW] {company_info['Name']} | {company_info['Job_Description']}&ssoToken={ssoToken}") 
             companies.append(company_info)
-
+            
     for company in companies:
         if not company['Interview_Date']:
             for c in companies:
