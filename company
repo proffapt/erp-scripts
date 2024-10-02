@@ -1,7 +1,6 @@
 #!/opt/homebrew/bin/python3.11
 
 import os
-import sys
 import json
 import erpcreds
 import requests
@@ -10,8 +9,6 @@ from datetime import datetime, timedelta
 import iitkgp_erp_login.erp as erp
 import xml.etree.ElementTree as ET
 from bs4 import BeautifulSoup as bs
-import iitkgp_erp_login.utils as utils
-from iitkgp_erp_login.endpoints import HOMEPAGE_URL
 
 # Global variables and objects
 companies_file = f"{os.path.dirname(__file__)}/companies.json"
