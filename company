@@ -31,7 +31,7 @@ def applied(companies):
     print('>> [Listing Applied Companies]')
     for company in companies:
         if company['Application_Status'] == 'Y':
-            print(f"[APPLIED] {company['Name']}")
+            print(f"{company['Name']} ~ {company['Role']}")
 
 def exam(companies):
     print('>> [Listing Applied Companies with remaining Interview]')
@@ -43,9 +43,9 @@ def exam(companies):
                 exam_date += timedelta(days=1)
                 
             if exam_date == None:
-                print(f"[APPLIED : AVAILABLE] {company['Name']}")
+                print(f"{company['Name']} ~ {company['Role']} | [Interview Date] : {company['Interview_Date']}")
             elif current_time < exam_date:
-                print(f"[APPLIED : AVAILABLE] {company['Name']}")
+                print(f"{company['Name']}")
 
 def _open(companies, ssoToken):
     print('>> [Listing Open Companies]')
@@ -53,7 +53,7 @@ def _open(companies, ssoToken):
     for company in companies:
         deadline = datetime.strptime(company['End_Date'], '%d-%m-%Y %H:%M')
         if current_time < deadline:
-            print(f"[OPEN] {company['Name']} | [APPLICATION STATUS : {company['Application_Status']}] | {company['Job_Description']}&ssoToken={ssoToken}")
+            print(f"{company['Name']} ~ {company['Role']} | [APPLICATION STATUS : {company['Application_Status']}] | {company['Job_Description']}&ssoToken={ssoToken}")
 
 def main():
     args = parse_args() # Arguments parser
@@ -80,6 +80,7 @@ def main():
         company_info = {
             'Name': row.find('cell[1]').text.split('>')[1].split('<')[0].strip(),
             'Salary': row.find('cell[6]').text.strip(),
+            'Role': row.find('cell[4]').text.split("'")[1].strip(),
             'Job_Description': f'https://erp.iitkgp.ac.in/TrainingPlacementSSO/TPJNFView.jsp?jnf_id={jd_args[0]}&com_id={jd_args[1]}&yop={jd_args[2]}&user_type=SU&rollno={erpcreds.ROLL_NUMBER}',
             'Application_Status': row.find('cell[9]').text.strip() if row.find('cell[9]').text.strip() else 'N',
             'Start_Date': row.find('cell[10]').text.strip(),
@@ -88,6 +89,8 @@ def main():
         }
         
         job_desc_exists = False
+        # Update Application Status and End Date with latest data in the stored database
+        # These are dynamic, might change from one run to another based on what I do
         for comp in companies:
             if comp['Job_Description'] == company_info['Job_Description']:
                 comp['Application_Status'] = company_info['Application_Status']
@@ -97,9 +100,10 @@ def main():
                 break
 
         if not job_desc_exists:
-            print(f"[NEW] {company_info['Name']} | {company_info['Job_Description']}&ssoToken={ssoToken}") 
+            print(f"{company_info['Name']} ~ {company_info['Role']} | {company_info['Job_Description']}&ssoToken={ssoToken}") 
             companies.append(company_info)
-            
+    
+    # Update / Sync Interview Date with latest data in the stored database
     for company in companies:
         if not company['Interview_Date']:
             for c in companies:
