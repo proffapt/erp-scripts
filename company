@@ -55,6 +55,23 @@ def _open(companies, ssoToken):
         if current_time < deadline:
             print(f"{company['Name']} ~ {company['Role']} | [APPLICATION STATUS : {company['Application_Status']}] | {company['Job_Description']}&ssoToken={ssoToken}")
 
+def get_ctc_with_currency(jd_url):
+    jd_response = session.get(jd_url, headers=headers)
+    html_content = jd_response.text.strip()
+    soup = bs(html_content, 'html.parser')
+
+    # Find the table that contains the CTC value
+    # We look for the table rows that have the text 'Cost to Company per year'
+    table_rows = soup.find_all('tr')
+
+    for row in table_rows:
+        columns = row.find_all('td')
+        for column in columns:
+            if 'Cost to Company per year' in column.text:
+                # The CTC value should be in one of the next columns
+                ctc_value = row.find_next('td').find_next('td').find_next('td').find_next('td').text
+                return ctc_value
+
 def main():
     args = parse_args() # Arguments parser
     
@@ -77,11 +94,13 @@ def main():
     for row in root.findall('row'):
         jd_args = row.find('cell[4]').text.split("'")[5].split('"');
         jd_args = [jd_args[1],  jd_args[3], jd_args[5]]
+        job_description = f'https://erp.iitkgp.ac.in/TrainingPlacementSSO/TPJNFView.jsp?jnf_id={jd_args[0]}&com_id={jd_args[1]}&yop={jd_args[2]}&user_type=SU&rollno={erpcreds.ROLL_NUMBER}'
+
         company_info = {
             'Name': row.find('cell[1]').text.split('>')[1].split('<')[0].strip(),
-            'Salary': row.find('cell[6]').text.strip(),
+            'Salary': get_ctc_with_currency(f'{job_description}&ssoToken={ssoToken}'),
             'Role': row.find('cell[4]').text.split("'")[1].strip(),
-            'Job_Description': f'https://erp.iitkgp.ac.in/TrainingPlacementSSO/TPJNFView.jsp?jnf_id={jd_args[0]}&com_id={jd_args[1]}&yop={jd_args[2]}&user_type=SU&rollno={erpcreds.ROLL_NUMBER}',
+            'Job_Description': job_description,
             'Application_Status': row.find('cell[9]').text.strip() if row.find('cell[9]').text.strip() else 'N',
             'Start_Date': row.find('cell[10]').text.strip(),
             'End_Date': row.find('cell[11]').text.strip(),
