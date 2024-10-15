@@ -53,7 +53,10 @@ def _open(companies, ssoToken):
     for company in companies:
         deadline = datetime.strptime(company['End_Date'], '%d-%m-%Y %H:%M')
         if current_time < deadline:
-            print(f"{company['Name']} ~ {company['Role']} | [APPLICATION STATUS : {company['Application_Status']}] | {company['Apply_Link']}&mode=ApplyCV1&ssoToken={ssoToken}")
+            message = f"{company['Name']} ~ {company['Role']} [{company['Application_Status']}]"
+            if company['Application_Status'] == 'N':
+                message += f" | {company['Apply_Link']}&mode=ApplyCV1"
+            print(message)
 
 # Not used due to performance issues
 def get_ctc_with_currency(jd_url):
@@ -121,7 +124,7 @@ def main():
                 break
 
         if not job_desc_exists:
-            print(f"{company_info['Name']} ~ {company_info['Role']} | {company_info['Job_Description']}&ssoToken={ssoToken}") 
+            print(f"{company_info['Name']} ~ {company_info['Role']} | {company_info['Job_Description']}") 
             companies.append(company_info)
     
     # Update / Sync Interview Date with latest data in the stored database
