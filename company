@@ -62,18 +62,43 @@ def applied(companies):
     print(tabulate(table_data, headers=headers, tablefmt="fancy_grid"))
 
 def exam(companies):
-    print('>> [Listing Applied Companies with remaining Interview]')
+    print('>> [Listing Applied Companies with Remaining Interviews]')
     current_time = datetime.now()
+
+    # Maximum length for each field
+    max_name_length = 30
+    max_role_length = 40
+    max_salary_length = 12
+    max_interview_date_length = 20
+
+    # Create a list of rows for companies with Application_Status 'Y'
+    table_data = []
     for company in companies:
-        if company['Application_Status'] == 'Y':
-            exam_date = datetime.strptime(company['Interview_Date'], '%d-%m-%Y %H:%M') if company['Interview_Date'] else None
-            if exam_date is not None:
-                exam_date += timedelta(days=1)
-                
-            if exam_date == None:
-                print(f"{company['Name']} ~ {company['Role']} | [Interview Date] : {company['Interview_Date']}")
-            elif current_time < exam_date:
-                print(f"{company['Name']}")
+        interview_date = None
+        if company['Interview_Date']:
+            try:
+                interview_date = datetime.strptime(company['Interview_Date'], '%d-%m-%Y %H:%M')
+            except ValueError:
+                # Handle incorrect date formats, you can log or raise an error if needed
+                continue
+
+        # Add rows where either interview date is None or current_time < interview_date
+        if company['Application_Status'] == 'Y' and (interview_date is None or current_time < interview_date):
+            table_data.append([
+                limit_word_length(company['Name'], max_name_length),
+                create_hyperlink(limit_word_length(company['Role'], max_role_length), company.get('Job_Description', '')),
+                limit_word_length(company['Salary'], max_salary_length),
+                limit_word_length(company['Interview_Date'], max_interview_date_length)
+            ])
+
+    # Define headers
+    headers = ["Company Name", "Role", "Salary", "Interview Date"]
+
+    # Print the table if data exists
+    if table_data:
+        print(tabulate(table_data, headers=headers, tablefmt="fancy_grid"))
+    else:
+        print("No companies with remaining interviews.")
 
 def _open(companies, ssoToken):
     print('>> [Listing Open Companies]')
