@@ -55,6 +55,7 @@ def _open(companies, ssoToken):
         if current_time < deadline:
             print(f"{company['Name']} ~ {company['Role']} | [APPLICATION STATUS : {company['Application_Status']}] | {company['Apply_Link']}&mode=ApplyCV1&ssoToken={ssoToken}")
 
+# Not used due to performance issues
 def get_ctc_with_currency(jd_url):
     jd_response = session.get(jd_url, headers=headers)
     html_content = jd_response.text.strip()
@@ -98,7 +99,7 @@ def main():
 
         company_info = {
             'Name': row.find('cell[1]').text.split('>')[1].split('<')[0].strip(),
-            'Salary': get_ctc_with_currency(f'{job_description}&ssoToken={ssoToken}'),
+            'Salary': row.find('cell[6]').text.strip(),
             'Role': row.find('cell[4]').text.split("'")[1].strip(),
             'Job_Description': job_description,
             'Application_Status': row.find('cell[9]').text.strip() if row.find('cell[9]').text.strip() else 'N',
