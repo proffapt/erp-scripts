@@ -28,6 +28,12 @@ def parse_args():
     parser.add_argument('-aa', '--applied-available', action='store_true', help='Query for companies you have applied to and they are still opoen')
     return parser.parse_args()
 
+# Maximum length for each field
+MAX_NAME_LENGTH = 30
+MAX_ROLE_LENGTH = 40
+MAX_SALARY_LENGTH = 12
+MAX_DATE_LENGTH = 20
+
 def limit_word_length(text, max_length):
     if len(text) > max_length:
         return text[:max_length] + "..."  # Truncate and add "..."
@@ -38,40 +44,23 @@ def create_hyperlink(label, url):
 
 def applied(companies):
     print('>> [Listing Applied Companies]')
-    # Maximum length for each field
-    max_name_length = 30
-    max_role_length = 40
-    max_salary_length = 12
-    max_interview_date_length = 20
-
-    # Create a list of rows for companies with Application_Status 'Y' and limit word lengths
     table_data = [
         [
-            limit_word_length(company['Name'], max_name_length),
-            create_hyperlink(limit_word_length(company['Role'], max_role_length), company['Job_Description']),
-            limit_word_length(company['Salary'], max_salary_length),
-            limit_word_length(company['Interview_Date'], max_interview_date_length)
+            limit_word_length(company['Name'], MAX_NAME_LENGTH),
+            create_hyperlink(limit_word_length(company['Role'], MAX_ROLE_LENGTH), company['Job_Description']),
+            limit_word_length(company['Salary'], MAX_SALARY_LENGTH),
+            limit_word_length(company['Interview_Date'], MAX_DATE_LENGTH)
         ]
         for company in companies if company['Application_Status'] == 'Y'
     ]
 
-    # Define headers
     headers = ["Company Name", "Role", "Salary", "Interview Date"]
-
-    # Print the table
     print(tabulate(table_data, headers=headers, tablefmt="fancy_grid"))
 
 def exam(companies):
     print('>> [Listing Applied Companies with Remaining Interviews]')
     current_time = datetime.now()
 
-    # Maximum length for each field
-    max_name_length = 30
-    max_role_length = 40
-    max_salary_length = 12
-    max_interview_date_length = 20
-
-    # Create a list of rows for companies with Application_Status 'Y'
     table_data = []
     for company in companies:
         interview_date = None
@@ -85,16 +74,13 @@ def exam(companies):
         # Add rows where either interview date is None or current_time < interview_date
         if company['Application_Status'] == 'Y' and (interview_date is None or current_time < interview_date):
             table_data.append([
-                limit_word_length(company['Name'], max_name_length),
-                create_hyperlink(limit_word_length(company['Role'], max_role_length), company.get('Job_Description', '')),
-                limit_word_length(company['Salary'], max_salary_length),
-                limit_word_length(company['Interview_Date'], max_interview_date_length)
+                limit_word_length(company['Name'], MAX_NAME_LENGTH),
+                create_hyperlink(limit_word_length(company['Role'], MAX_ROLE_LENGTH), company.get('Job_Description', '')),
+                limit_word_length(company['Salary'], MAX_SALARY_LENGTH),
+                limit_word_length(company['Interview_Date'], MAX_DATE_LENGTH)
             ])
 
-    # Define headers
     headers = ["Company Name", "Role", "Salary", "Interview Date"]
-
-    # Print the table if data exists
     if table_data:
         print(tabulate(table_data, headers=headers, tablefmt="fancy_grid"))
     else:
@@ -103,9 +89,6 @@ def exam(companies):
 def _open(companies, ssoToken):
     print('>> [Listing Open Companies]')
     current_time = datetime.now()
-
-    max_name_length = 30
-    max_role_length = 40
 
     table_data = []
     links = []  # To store full URLs with their indices
@@ -117,8 +100,8 @@ def _open(companies, ssoToken):
             continue
 
         if current_time < deadline:
-            name = limit_word_length(company['Name'], max_name_length)
-            role = limit_word_length(company['Role'], max_role_length)
+            name = limit_word_length(company['Name'], MAX_NAME_LENGTH)
+            role = limit_word_length(company['Role'], MAX_ROLE_LENGTH)
 
             apply_link = "APPLIED"
             if company['Application_Status'] == 'N':
