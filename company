@@ -103,13 +103,43 @@ def exam(companies):
 def _open(companies, ssoToken):
     print('>> [Listing Open Companies]')
     current_time = datetime.now()
-    for company in companies:
-        deadline = datetime.strptime(company['End_Date'], '%d-%m-%Y %H:%M')
+
+    max_name_length = 30
+    max_role_length = 40
+
+    table_data = []
+    links = []  # To store full URLs with their indices
+
+    for i, company in enumerate(companies):
+        try:
+            deadline = datetime.strptime(company['End_Date'], '%d-%m-%Y %H:%M')
+        except ValueError:
+            continue
+
         if current_time < deadline:
-            message = f"{company['Name']} ~ {company['Role']} [{company['Application_Status']}]"
+            name = limit_word_length(company['Name'], max_name_length)
+            role = limit_word_length(company['Role'], max_role_length)
+
+            apply_link = "APPLIED"
             if company['Application_Status'] == 'N':
-                message += f" | {company['Apply_Link']}&mode=ApplyCV1"
-            print(message)
+                apply_link = f"[Link {i+1}]"
+                company['Apply_Link'] += "&mode=ApplyCV1"
+
+            table_data.append([name, role, apply_link])
+            if apply_link != "APPLIED":
+                links.append(f"Link {i+1}: {company['Apply_Link']}")
+
+    headers = ["Company Name", "Role", "Apply Link"]
+
+    if table_data:
+        print(tabulate(table_data, headers=headers, tablefmt="fancy_grid"))
+        if links:
+            print("\nFull Links:")
+            for link in links:
+                print(link)
+            print()
+    else:
+        print("No companies with active deadlines.")
 
 # Not used due to performance issues
 def get_ctc_with_currency(jd_url):
