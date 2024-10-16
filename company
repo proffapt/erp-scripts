@@ -6,7 +6,7 @@ import erpcreds
 import requests
 import argparse
 from tabulate import tabulate
-from datetime import datetime, timedelta 
+from datetime import datetime
 import iitkgp_erp_login.erp as erp
 import xml.etree.ElementTree as ET
 from bs4 import BeautifulSoup as bs
@@ -15,7 +15,7 @@ from bs4 import BeautifulSoup as bs
 companies_file = f"{os.path.dirname(__file__)}/companies.json"
 TPSTUDENT_URL = 'https://erp.iitkgp.ac.in/TrainingPlacementSSO/TPStudent.jsp'
 COMPANIES_URL = 'https://erp.iitkgp.ac.in/TrainingPlacementSSO/ERPMonitoring.htm?action=fetchData&jqqueryid=37&_search=false&nd=1448725351715&rows=20&page=1&sidx=&sord=asc&totalrows=50'
-headers = {
+HEADERS = {
     'timeout': '20',
     'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Ubuntu Chromium/51.0.2704.79 Chrome/51.0.2704.79 Safari/537.36',
 }
@@ -108,12 +108,11 @@ def _open(companies, ssoToken):
                 apply_link = f"[Link {i+1}]"
                 company['Apply_Link'] += "&mode=ApplyCV1"
 
-            table_data.append([name, role, apply_link])
+            table_data.append([name, create_hyperlink(role, company['Job_Description']), apply_link])
             if apply_link != "APPLIED":
-                links.append(f"Link {i+1}: {company['Apply_Link']}")
+                links.append(f"{apply_link}: {company['Apply_Link']}")
 
     headers = ["Company Name", "Role", "Apply Link"]
-
     if table_data:
         print(tabulate(table_data, headers=headers, tablefmt="fancy_grid"))
         if links:
@@ -126,7 +125,7 @@ def _open(companies, ssoToken):
 
 # Not used due to performance issues
 def get_ctc_with_currency(jd_url):
-    jd_response = session.get(jd_url, headers=headers)
+    jd_response = session.get(jd_url, headers=HEADERS)
     html_content = jd_response.text.strip()
     soup = bs(html_content, 'html.parser')
 
@@ -152,16 +151,18 @@ def main():
             companies = json.load(json_file)
             
     print('>> [Syncing with ERP]')
-    sessionToken, ssoToken = erp.login(headers, session, ERPCREDS=erpcreds, OTP_CHECK_INTERVAL=2, SESSION_STORAGE_FILE=".companies_session")
-    session.post(TPSTUDENT_URL, data=dict(ssoToken=ssoToken, menu_id=11, module_id=26), headers=headers)
-    r = session.get(COMPANIES_URL, headers=headers)
+    sessionToken, ssoToken = erp.login(HEADERS, session, ERPCREDS=erpcreds, OTP_CHECK_INTERVAL=2, SESSION_STORAGE_FILE=".companies_session")
+    session.post(TPSTUDENT_URL, data=dict(ssoToken=ssoToken, menu_id=11, module_id=26), headers=HEADERS)
+    r = session.get(COMPANIES_URL, headers=HEADERS)
 
     soup = bs(r.text, features="xml")
     xml_string = soup.prettify()
     xml_encoded = xml_string.encode('utf-8')
     root = ET.fromstring(xml_encoded)
 
-    for row in root.findall('row'):
+    table_data = []
+    links = []  # To store full URLs with their indices
+    for i, row in enumerate(root.findall('row')):
         jd_args = row.find('cell[4]').text.split("'")[5].split('"');
         jd_args = [jd_args[1],  jd_args[3], jd_args[5]]
         job_description = f'https://erp.iitkgp.ac.in/TrainingPlacementSSO/TPJNFView.jsp?jnf_id={jd_args[0]}&com_id={jd_args[1]}&yop={jd_args[2]}&user_type=SU&rollno={erpcreds.ROLL_NUMBER}'
@@ -190,8 +191,26 @@ def main():
                 break
 
         if not job_desc_exists:
-            print(f"{company_info['Name']} ~ {company_info['Role']} | {company_info['Job_Description']}") 
+            name = limit_word_length(company_info['Name'], MAX_NAME_LENGTH)
+            role = limit_word_length(company_info['Role'], MAX_ROLE_LENGTH)
+            apply_link = f"[Link {i+1}]"
+
+            table_data.append([name, create_hyperlink(role, company_info['Job_Description']), apply_link])
+            links.append(f"{apply_link}: {company_info['Apply_Link']}")
+
             companies.append(company_info)
+
+    print('>> [Listing Newly Opened Companies]')
+    headers = ["Company Name", "Role", "Apply Link"]
+    if table_data:
+        print(tabulate(table_data, headers=headers, tablefmt="fancy_grid"))
+        if links:
+            print("\nFull Links:")
+            for link in links:
+                print(link)
+            print()
+    else:
+        print("No new companies came since last time.")
     
     # Update / Sync Interview Date with latest data in the stored database
     for company in companies:
