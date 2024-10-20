@@ -196,7 +196,7 @@ def main():
             apply_link = f"[Link {i+1}]"
 
             table_data.append([name, create_hyperlink(role, company_info['Job_Description']), apply_link])
-            links.append(f"{apply_link}: {company_info['Apply_Link']}")
+            links.append(f"{apply_link}: {company_info['Apply_Link']}&mode=ApplyCV1")
 
             companies.append(company_info)
 
