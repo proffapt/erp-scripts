@@ -5,28 +5,49 @@ import json
 import erpcreds
 import requests
 import argparse
+import webbrowser
 from tabulate import tabulate
 from datetime import datetime
 import iitkgp_erp_login.erp as erp
 import xml.etree.ElementTree as ET
 from bs4 import BeautifulSoup as bs
+from iitkgp_erp_login.endpoints import HOMEPAGE_URL
 
 # Global variables and objects
 companies_file = f"{os.path.dirname(__file__)}/companies.json"
-TPSTUDENT_URL = 'https://erp.iitkgp.ac.in/TrainingPlacementSSO/TPStudent.jsp'
-COMPANIES_URL = 'https://erp.iitkgp.ac.in/TrainingPlacementSSO/ERPMonitoring.htm?action=fetchData&jqqueryid=37&_search=false&nd=1448725351715&rows=20&page=1&sidx=&sord=asc&totalrows=50'
+TPSTUDENT_URL = "https://erp.iitkgp.ac.in/TrainingPlacementSSO/TPStudent.jsp"
+COMPANIES_URL = "https://erp.iitkgp.ac.in/TrainingPlacementSSO/ERPMonitoring.htm?action=fetchData&jqqueryid=37&_search=false&nd=1448725351715&rows=20&page=1&sidx=&sord=asc&totalrows=50"
 HEADERS = {
-    'timeout': '20',
-    'User-Agent': 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Ubuntu Chromium/51.0.2704.79 Chrome/51.0.2704.79 Safari/537.36',
+    "timeout": "20",
+    "User-Agent": "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Ubuntu Chromium/51.0.2704.79 Chrome/51.0.2704.79 Safari/537.36",
 }
 session = requests.Session()
 
+
 def parse_args():
-    parser = argparse.ArgumentParser(description="Fetch companies, queried based on their status from CDC portal")
-    parser.add_argument('-o', '--open', action='store_true', help='Query for companies currently open for CV submission')
-    parser.add_argument('-a', '--applied', action='store_true', help='Query for companies you have applied to')
-    parser.add_argument('-aa', '--applied-available', action='store_true', help='Query for companies you have applied to and they are still opoen')
+    parser = argparse.ArgumentParser(
+        description="Fetch companies, queried based on their status from CDC portal"
+    )
+    parser.add_argument(
+        "-o",
+        "--open",
+        action="store_true",
+        help="Query for companies currently open for CV submission",
+    )
+    parser.add_argument(
+        "-a",
+        "--applied",
+        action="store_true",
+        help="Query for companies you have applied to",
+    )
+    parser.add_argument(
+        "-aa",
+        "--applied-available",
+        action="store_true",
+        help="Query for companies you have applied to and they are still opoen",
+    )
     return parser.parse_args()
+
 
 # Maximum length for each field
 MAX_NAME_LENGTH = 30
@@ -34,50 +55,65 @@ MAX_ROLE_LENGTH = 40
 MAX_SALARY_LENGTH = 12
 MAX_DATE_LENGTH = 20
 
+
 def limit_word_length(text, max_length):
     if len(text) > max_length:
         return text[:max_length] + "..."  # Truncate and add "..."
     return text
 
+
 def create_hyperlink(label, url):
     return f"\033]8;;{url}\033\\{label}\033]8;;\033\\"
 
+
 def applied(companies):
-    print('>> [Listing Applied Companies]')
+    print(">> [Listing Applied Companies]")
     table_data = [
         [
-            limit_word_length(company['Name'], MAX_NAME_LENGTH),
-            create_hyperlink(limit_word_length(company['Role'], MAX_ROLE_LENGTH), company['Job_Description']),
-            limit_word_length(company['Salary'], MAX_SALARY_LENGTH),
-            limit_word_length(company['Interview_Date'], MAX_DATE_LENGTH)
+            limit_word_length(company["Name"], MAX_NAME_LENGTH),
+            create_hyperlink(
+                limit_word_length(company["Role"], MAX_ROLE_LENGTH),
+                company["Job_Description"],
+            ),
+            limit_word_length(company["Salary"], MAX_SALARY_LENGTH),
+            limit_word_length(company["Interview_Date"], MAX_DATE_LENGTH),
         ]
-        for company in companies if company['Application_Status'] == 'Y'
+        for company in companies
+        if company["Application_Status"] == "Y"
     ]
 
     headers = ["Company Name", "Role", "Salary", "Interview Date"]
     print(tabulate(table_data, headers=headers, tablefmt="fancy_grid"))
 
+
 def exam(companies):
-    print('>> [Listing Applied Companies with Remaining Interviews]')
+    print(">> [Listing Applied Companies with Remaining Interviews]")
     current_time = datetime.now()
 
     table_data = []
     for company in companies:
         interview_date = None
-        if company['Interview_Date']:
+        if company["Interview_Date"]:
             try:
-                interview_date = datetime.strptime(company['Interview_Date'], '%d-%m-%Y %H:%M')
+                interview_date = datetime.strptime(
+                    company["Interview_Date"], "%d-%m-%Y %H:%M"
+                )
             except ValueError:
                 # Handle incorrect date formats, you can log or raise an error if needed
                 continue
 
         # Add rows where either interview date is None or current_time < interview_date
-        if company['Application_Status'] == 'Y' and (interview_date is None or current_time < interview_date):
+        if company["Application_Status"] == "Y" and (
+            interview_date is None or current_time < interview_date
+        ):
             table_data.append([
-                limit_word_length(company['Name'], MAX_NAME_LENGTH),
-                create_hyperlink(limit_word_length(company['Role'], MAX_ROLE_LENGTH), company.get('Job_Description', '')),
-                limit_word_length(company['Salary'], MAX_SALARY_LENGTH),
-                limit_word_length(company['Interview_Date'], MAX_DATE_LENGTH)
+                limit_word_length(company["Name"], MAX_NAME_LENGTH),
+                create_hyperlink(
+                    limit_word_length(company["Role"], MAX_ROLE_LENGTH),
+                    company.get("Job_Description", ""),
+                ),
+                limit_word_length(company["Salary"], MAX_SALARY_LENGTH),
+                limit_word_length(company["Interview_Date"], MAX_DATE_LENGTH),
             ])
 
     headers = ["Company Name", "Role", "Salary", "Interview Date"]
@@ -86,8 +122,9 @@ def exam(companies):
     else:
         print("No companies with remaining interviews.")
 
+
 def _open(companies, ssoToken):
-    print('>> [Listing Open Companies]')
+    print(">> [Listing Open Companies]")
     current_time = datetime.now()
 
     table_data = []
@@ -95,20 +132,24 @@ def _open(companies, ssoToken):
 
     for i, company in enumerate(companies):
         try:
-            deadline = datetime.strptime(company['End_Date'], '%d-%m-%Y %H:%M')
+            deadline = datetime.strptime(company["End_Date"], "%d-%m-%Y %H:%M")
         except ValueError:
             continue
 
         if current_time < deadline:
-            name = limit_word_length(company['Name'], MAX_NAME_LENGTH)
-            role = limit_word_length(company['Role'], MAX_ROLE_LENGTH)
+            name = limit_word_length(company["Name"], MAX_NAME_LENGTH)
+            role = limit_word_length(company["Role"], MAX_ROLE_LENGTH)
 
             apply_link = "APPLIED"
-            if company['Application_Status'] == 'N':
-                apply_link = f"[Link {i+1}]"
-                company['Apply_Link'] += "&mode=ApplyCV1"
+            if company["Application_Status"] == "N":
+                apply_link = f"[Link {i + 1}]"
+                company["Apply_Link"] += "&mode=ApplyCV1"
 
-            table_data.append([name, create_hyperlink(role, company['Job_Description']), apply_link])
+            table_data.append([
+                name,
+                create_hyperlink(role, company["Job_Description"]),
+                apply_link,
+            ])
             if apply_link != "APPLIED":
                 links.append(f"{apply_link}: {company['Apply_Link']}")
 
@@ -123,84 +164,114 @@ def _open(companies, ssoToken):
     else:
         print("No companies with active deadlines.")
 
+
 # Not used due to performance issues
 def get_ctc_with_currency(jd_url):
     jd_response = session.get(jd_url, headers=HEADERS)
     html_content = jd_response.text.strip()
-    soup = bs(html_content, 'html.parser')
+    soup = bs(html_content, "html.parser")
 
     # Find the table that contains the CTC value
     # We look for the table rows that have the text 'Cost to Company per year'
-    table_rows = soup.find_all('tr')
+    table_rows = soup.find_all("tr")
 
     for row in table_rows:
-        columns = row.find_all('td')
+        columns = row.find_all("td")
         for column in columns:
-            if 'Cost to Company per year' in column.text:
+            if "Cost to Company per year" in column.text:
                 # The CTC value should be in one of the next columns
-                ctc_value = row.find_next('td').find_next('td').find_next('td').find_next('td').text
+                ctc_value = (
+                    row.find_next("td")
+                    .find_next("td")
+                    .find_next("td")
+                    .find_next("td")
+                    .text
+                )
                 return ctc_value
 
+
 def main():
-    args = parse_args() # Arguments parser
-    
+    args = parse_args()  # Arguments parser
+
     # Getting existing companies
     companies = []
     if os.path.exists(companies_file):
-        with open(companies_file, 'r') as json_file:
+        with open(companies_file, "r") as json_file:
             companies = json.load(json_file)
-            
-    print('>> [Syncing with ERP]')
-    sessionToken, ssoToken = erp.login(HEADERS, session, ERPCREDS=erpcreds, OTP_CHECK_INTERVAL=2, SESSION_STORAGE_FILE=".companies_session")
-    session.post(TPSTUDENT_URL, data=dict(ssoToken=ssoToken, menu_id=11, module_id=26), headers=HEADERS)
+
+    print(">> [Syncing with ERP]")
+    sessionToken, ssoToken = erp.login(
+        HEADERS,
+        session,
+        ERPCREDS=erpcreds,
+        OTP_CHECK_INTERVAL=2,
+        SESSION_STORAGE_FILE=".companies_session",
+    )
+
+    session.post(
+        TPSTUDENT_URL,
+        data=dict(ssoToken=ssoToken, menu_id=11, module_id=26),
+        headers=HEADERS,
+    )
+
+    # Open CDC Portal
+    cdc_url = f"{TPSTUDENT_URL}?ssoToken={ssoToken}"
+    webbrowser.open(cdc_url)
+
     r = session.get(COMPANIES_URL, headers=HEADERS)
 
     soup = bs(r.text, features="xml")
     xml_string = soup.prettify()
-    xml_encoded = xml_string.encode('utf-8')
+    xml_encoded = xml_string.encode("utf-8")
     root = ET.fromstring(xml_encoded)
 
     table_data = []
     links = []  # To store full URLs with their indices
-    for i, row in enumerate(root.findall('row')):
-        jd_args = row.find('cell[4]').text.split("'")[5].split('"');
-        jd_args = [jd_args[1],  jd_args[3], jd_args[5]]
-        job_description = f'https://erp.iitkgp.ac.in/TrainingPlacementSSO/TPJNFView.jsp?jnf_id={jd_args[0]}&com_id={jd_args[1]}&yop={jd_args[2]}&user_type=SU&rollno={erpcreds.ROLL_NUMBER}'
+    for i, row in enumerate(root.findall("row")):
+        jd_args = row.find("cell[4]").text.split("'")[5].split('"')
+        jd_args = [jd_args[1], jd_args[3], jd_args[5]]
+        job_description = f"https://erp.iitkgp.ac.in/TrainingPlacementSSO/TPJNFView.jsp?jnf_id={jd_args[0]}&com_id={jd_args[1]}&yop={jd_args[2]}&user_type=SU&rollno={erpcreds.ROLL_NUMBER}"
 
         company_info = {
-            'Name': row.find('cell[1]').text.split('>')[1].split('<')[0].strip(),
-            'Salary': row.find('cell[6]').text.strip(),
-            'Role': row.find('cell[4]').text.split("'")[1].strip(),
-            'Job_Description': job_description,
-            'Application_Status': row.find('cell[9]').text.strip() if row.find('cell[9]').text.strip() else 'N',
-            'Apply_Link': f"https://erp.iitkgp.ac.in/TrainingPlacementSSO/TPJNFViewAction.jsp?jnf_id={jd_args[0]}&com_id={jd_args[1]}&year={jd_args[2]}&rollno={erpcreds.ROLL_NUMBER}",
-            'Start_Date': row.find('cell[10]').text.strip(),
-            'End_Date': row.find('cell[11]').text.strip(),
-            'Interview_Date': row.find('cell[12]').text.strip(),
+            "Name": row.find("cell[1]").text.split(">")[1].split("<")[0].strip(),
+            "Salary": row.find("cell[6]").text.strip(),
+            "Role": row.find("cell[4]").text.split("'")[1].strip(),
+            "Job_Description": job_description,
+            "Application_Status": row.find("cell[9]").text.strip()
+            if row.find("cell[9]").text.strip()
+            else "N",
+            "Apply_Link": f"https://erp.iitkgp.ac.in/TrainingPlacementSSO/TPJNFViewAction.jsp?jnf_id={jd_args[0]}&com_id={jd_args[1]}&year={jd_args[2]}&rollno={erpcreds.ROLL_NUMBER}",
+            "Start_Date": row.find("cell[10]").text.strip(),
+            "End_Date": row.find("cell[11]").text.strip(),
+            "Interview_Date": row.find("cell[12]").text.strip(),
         }
-        
+
         job_desc_exists = False
         # Update Application Status and End Date with latest data in the stored database
         # These are dynamic, might change from one run to another based on what I do
         for comp in companies:
-            if comp['Job_Description'] == company_info['Job_Description']:
-                comp['Application_Status'] = company_info['Application_Status']
-                comp['End_Date'] = company_info['End_Date']
-                comp['Interview_Date'] = company_info['Interview_Date']
+            if comp["Job_Description"] == company_info["Job_Description"]:
+                comp["Application_Status"] = company_info["Application_Status"]
+                comp["End_Date"] = company_info["End_Date"]
+                comp["Interview_Date"] = company_info["Interview_Date"]
                 job_desc_exists = True
                 break
 
         if not job_desc_exists:
-            name = limit_word_length(company_info['Name'], MAX_NAME_LENGTH)
-            role = limit_word_length(company_info['Role'], MAX_ROLE_LENGTH)
-            apply_link = f"[Link {i+1}]"
+            name = limit_word_length(company_info["Name"], MAX_NAME_LENGTH)
+            role = limit_word_length(company_info["Role"], MAX_ROLE_LENGTH)
+            apply_link = f"[Link {i + 1}]"
 
-            table_data.append([name, create_hyperlink(role, company_info['Job_Description']), apply_link])
+            table_data.append([
+                name,
+                create_hyperlink(role, company_info["Job_Description"]),
+                apply_link,
+            ])
             links.append(f"{apply_link}: {company_info['Apply_Link']}&mode=ApplyCV1")
 
             companies.append(company_info)
 
-    print('>> [Listing Newly Opened Companies]')
+    print(">> [Listing Newly Opened Companies]")
     headers = ["Company Name", "Role", "Apply Link"]
     if table_data:
         print(tabulate(table_data, headers=headers, tablefmt="fancy_grid"))
@@ -211,13 +282,13 @@ def main():
             print()
     else:
         print("No new companies came since last time.")
-    
+
     # Update / Sync Interview Date with latest data in the stored database
     for company in companies:
-        if not company['Interview_Date']:
+        if not company["Interview_Date"]:
             for c in companies:
-                if c['Name'] == company['Name'] and c['Interview_Date']:
-                    company['Interview_Date'] = c['Interview_Date']
+                if c["Name"] == company["Name"] and c["Interview_Date"]:
+                    company["Interview_Date"] = c["Interview_Date"]
                     break
 
     # Open and Applied queries
@@ -227,10 +298,11 @@ def main():
         applied(companies)
     if args.applied_available:
         exam(companies)
-        
-    print('>> [Updating localDB]')
-    with open(companies_file, 'w') as json_file:
+
+    print(">> [Updating localDB]")
+    with open(companies_file, "w") as json_file:
         json.dump(companies, json_file, indent=2)
+
 
 if __name__ == "__main__":
     main()
