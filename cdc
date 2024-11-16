@@ -1,10 +1,9 @@
-#!/opt/homebrew/bin/python3.11
+#!/Users/proffapt/.pyenv/shims/python
 
 import requests
 import erpcreds
 import webbrowser
 import iitkgp_erp_login.erp as erp
-from iitkgp_erp_login.endpoints import HOMEPAGE_URL
 
 TPSTUDENT_URL = 'https://erp.iitkgp.ac.in/TrainingPlacementSSO/TPStudent.jsp'
 headers = {

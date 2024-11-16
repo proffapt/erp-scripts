@@ -1,4 +1,4 @@
-#!/opt/homebrew/bin/python3.11
+#!/Users/proffapt/.pyenv/shims/python
 
 import requests
 import erpcreds

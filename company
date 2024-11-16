@@ -1,4 +1,4 @@
-#!/opt/homebrew/bin/python3.11
+#!/Users/proffapt/.pyenv/shims/python
 
 import os
 import json
@@ -11,7 +11,6 @@ from datetime import datetime
 import iitkgp_erp_login.erp as erp
 import xml.etree.ElementTree as ET
 from bs4 import BeautifulSoup as bs
-from iitkgp_erp_login.endpoints import HOMEPAGE_URL
 
 # Global variables and objects
 companies_file = f"{os.path.dirname(__file__)}/companies.json"
