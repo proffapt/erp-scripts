@@ -205,7 +205,7 @@ def main():
         session,
         ERPCREDS=erpcreds,
         OTP_CHECK_INTERVAL=2,
-        SESSION_STORAGE_FILE=".companies_session",
+        SESSION_STORAGE_FILE=".erp_session",
     )
 
     session.post(
