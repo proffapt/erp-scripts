@@ -142,7 +142,6 @@ def _open(companies):
             apply_link = "APPLIED"
             if company["Application_Status"] == "N":
                 apply_link = f"[Link {i + 1}]"
-                company["Apply_Link"] += "&mode=ApplyCV1"
 
             table_data.append([
                 name,
@@ -234,7 +233,7 @@ def main():
         company_additional_details = f"https://erp.iitkgp.ac.in/TrainingPlacementSSO/AdmFilePDF.htm?type=COM&year={year}&com_id={com_id}"
         ppt = f"https://erp.iitkgp.ac.in/TrainingPlacementSSO/AdmFilePDF.htm?type=PPT&year={year}&com_id={com_id}"
         jd = f"https://erp.iitkgp.ac.in/TrainingPlacementSSO/TPJNFView.jsp?jnf_id={jnf_id}&com_id={com_id}&yop={year}&user_type=SU&rollno={erpcreds.ROLL_NUMBER}"
-        apply_link = f"https://erp.iitkgp.ac.in/TrainingPlacementSSO/TPJNFViewAction.jsp?jnf_id={jnf_id}&com_id={com_id}&year={year}&rollno={erpcreds.ROLL_NUMBER}"
+        apply_link = f"https://erp.iitkgp.ac.in/TrainingPlacementSSO/TPJNFViewAction.jsp?jnf_id={jnf_id}&com_id={com_id}&year={year}&rollno={erpcreds.ROLL_NUMBER}&mode=ApplyCV1"
         additional_jd = f"https://erp.iitkgp.ac.in/TrainingPlacementSSO/JnfMoreDet.jsp?mode=jnfMoreDet&rollno={erpcreds.ROLL_NUMBER}&year={year}&com_id={com_id}&jnf_id={jnf_id}"
         form_additional_details = f"https://erp.iitkgp.ac.in/TrainingPlacementSSO/AdmFilePDF.htm?type=JNF&year={year}&jnf_id={jnf_id}&com_id={com_id}"
 
@@ -276,7 +275,7 @@ def main():
                 create_hyperlink(role, company_info["Job_Description"]),
                 apply_link,
             ])
-            links.append(f"{apply_link}: {company_info['Apply_Link']}&mode=ApplyCV1")
+            links.append(f"{apply_link}: {company_info['Apply_Link']}")
 
             companies.append(company_info)
 
