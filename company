@@ -176,6 +176,18 @@ def get_ctc_with_currency(jd_url):
     return ctc
 
 
+# Downloads pdf content in bytes format
+# And checks if it is empty or has content
+## Not used currently
+def parse_link(link):
+    stream = session.get(link, stream=True)
+    attachment = b''
+    for chunk in stream.iter_content(4096):
+        attachment += chunk
+    
+    return link if attachment else None
+
+
 def main():
     args = parse_args()  # Arguments parser
 
@@ -186,7 +198,7 @@ def main():
             companies = json.load(json_file)
 
     print(">> [Syncing with ERP]")
-    sessionToken, ssoToken = erp.login(
+    _, ssoToken = erp.login(
         HEADERS,
         session,
         ERPCREDS=erpcreds,
@@ -216,21 +228,31 @@ def main():
     for i, row in enumerate(root.findall("row")):
         jd_args = row.find("cell[4]").text.split("'")[5].split('"')
         jnf_id, com_id, year = jd_args[1], jd_args[3], jd_args[5]
+
+        # Links
+        company_details = f"https://erp.iitkgp.ac.in/TrainingPlacementSSO/TPComView.jsp?yop={year}&com_id={com_id}&user_type=SU"
+        company_additional_details = f"https://erp.iitkgp.ac.in/TrainingPlacementSSO/AdmFilePDF.htm?type=COM&year={year}&com_id={com_id}"
+        ppt = f"https://erp.iitkgp.ac.in/TrainingPlacementSSO/AdmFilePDF.htm?type=PPT&year={year}&com_id={com_id}"
+        jd = f"https://erp.iitkgp.ac.in/TrainingPlacementSSO/TPJNFView.jsp?jnf_id={jnf_id}&com_id={com_id}&yop={year}&user_type=SU&rollno={erpcreds.ROLL_NUMBER}"
+        apply_link = f"https://erp.iitkgp.ac.in/TrainingPlacementSSO/TPJNFViewAction.jsp?jnf_id={jnf_id}&com_id={com_id}&year={year}&rollno={erpcreds.ROLL_NUMBER}"
         additional_jd = f"https://erp.iitkgp.ac.in/TrainingPlacementSSO/JnfMoreDet.jsp?mode=jnfMoreDet&rollno={erpcreds.ROLL_NUMBER}&year={year}&com_id={com_id}&jnf_id={jnf_id}"
+        form_additional_details = f"https://erp.iitkgp.ac.in/TrainingPlacementSSO/AdmFilePDF.htm?type=JNF&year={year}&jnf_id={jnf_id}&com_id={com_id}"
 
         company_info = {
             "Name": row.find("cell[1]").text.split(">")[1].split("<")[0].strip(),
-            "CTC": get_ctc_with_currency(additional_jd),
+            "Company_Details": company_details,
+            "Company_Additional_Details": company_additional_details,
+            "PPT": ppt,
             "Role": row.find("cell[4]").text.split("'")[1].strip(),
-            "Job_Description": f"https://erp.iitkgp.ac.in/TrainingPlacementSSO/TPJNFView.jsp?jnf_id={jnf_id}&com_id={com_id}&yop={year}&user_type=SU&rollno={erpcreds.ROLL_NUMBER}",
+            "Job_Description": jd,
+            "Apply_Link": apply_link,
             "Additional_Job_Description": additional_jd,
-            "Application_Status": row.find("cell[9]").text.strip()
-            if row.find("cell[9]").text.strip()
-            else "N",
-            "Apply_Link": f"https://erp.iitkgp.ac.in/TrainingPlacementSSO/TPJNFViewAction.jsp?jnf_id={jnf_id}&com_id={com_id}&year={year}&rollno={erpcreds.ROLL_NUMBER}",
+            "CTC": get_ctc_with_currency(additional_jd),
+            "Form_Additional_Details": form_additional_details,
+            "Application_Status": row.find("cell[9]").text.strip() if row.find("cell[9]").text.strip() else "N",
             "Start_Date": row.find("cell[10]").text.strip(),
             "End_Date": row.find("cell[11]").text.strip(),
-            "Interview_Date": row.find("cell[12]").text.strip(),
+            "Interview_Date": row.find("cell[12]").text.strip() if row.find("cell[12]").text.strip() else None,
         }
 
         job_desc_exists = False
@@ -280,7 +302,7 @@ def main():
 
     # Open and Applied queries
     if args.open:
-        _open(companies, ssoToken)
+        _open(companies)
     if args.applied:
         applied(companies)
     if args.applied_available:
