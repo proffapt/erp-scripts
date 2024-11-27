@@ -74,7 +74,7 @@ def applied(companies):
                 limit_word_length(company["Role"], MAX_ROLE_LENGTH),
                 company["Job_Description"],
             ),
-            limit_word_length(company["Salary"], MAX_SALARY_LENGTH),
+            limit_word_length(company["CTC"], MAX_SALARY_LENGTH),
             limit_word_length(company["Interview_Date"], MAX_DATE_LENGTH),
         ]
         for company in companies
@@ -111,7 +111,7 @@ def exam(companies):
                     limit_word_length(company["Role"], MAX_ROLE_LENGTH),
                     company.get("Job_Description", ""),
                 ),
-                limit_word_length(company["Salary"], MAX_SALARY_LENGTH),
+                limit_word_length(company["CTC"], MAX_SALARY_LENGTH),
                 limit_word_length(company["Interview_Date"], MAX_DATE_LENGTH),
             ])
 
@@ -122,7 +122,7 @@ def exam(companies):
         print("No companies with remaining interviews.")
 
 
-def _open(companies, ssoToken):
+def _open(companies):
     print(">> [Listing Open Companies]")
     current_time = datetime.now()
 
@@ -164,29 +164,16 @@ def _open(companies, ssoToken):
         print("No companies with active deadlines.")
 
 
-# Not used due to performance issues
 def get_ctc_with_currency(jd_url):
     jd_response = session.get(jd_url, headers=HEADERS)
     html_content = jd_response.text.strip()
     soup = bs(html_content, "html.parser")
 
-    # Find the table that contains the CTC value
-    # We look for the table rows that have the text 'Cost to Company per year'
-    table_rows = soup.find_all("tr")
+    row = soup.find_all("tr")[-1]
+    column = row.find_all("td")[-1]
+    ctc = column.text
 
-    for row in table_rows:
-        columns = row.find_all("td")
-        for column in columns:
-            if "Cost to Company per year" in column.text:
-                # The CTC value should be in one of the next columns
-                ctc_value = (
-                    row.find_next("td")
-                    .find_next("td")
-                    .find_next("td")
-                    .find_next("td")
-                    .text
-                )
-                return ctc_value
+    return ctc
 
 
 def main():
@@ -228,18 +215,19 @@ def main():
     links = []  # To store full URLs with their indices
     for i, row in enumerate(root.findall("row")):
         jd_args = row.find("cell[4]").text.split("'")[5].split('"')
-        jd_args = [jd_args[1], jd_args[3], jd_args[5]]
-        job_description = f"https://erp.iitkgp.ac.in/TrainingPlacementSSO/TPJNFView.jsp?jnf_id={jd_args[0]}&com_id={jd_args[1]}&yop={jd_args[2]}&user_type=SU&rollno={erpcreds.ROLL_NUMBER}"
+        jnf_id, com_id, year = jd_args[1], jd_args[3], jd_args[5]
+        additional_jd = f"https://erp.iitkgp.ac.in/TrainingPlacementSSO/JnfMoreDet.jsp?mode=jnfMoreDet&rollno={erpcreds.ROLL_NUMBER}&year={year}&com_id={com_id}&jnf_id={jnf_id}"
 
         company_info = {
             "Name": row.find("cell[1]").text.split(">")[1].split("<")[0].strip(),
-            "Salary": row.find("cell[6]").text.strip(),
+            "CTC": get_ctc_with_currency(additional_jd),
             "Role": row.find("cell[4]").text.split("'")[1].strip(),
-            "Job_Description": job_description,
+            "Job_Description": f"https://erp.iitkgp.ac.in/TrainingPlacementSSO/TPJNFView.jsp?jnf_id={jnf_id}&com_id={com_id}&yop={year}&user_type=SU&rollno={erpcreds.ROLL_NUMBER}",
+            "Additional_Job_Description": additional_jd,
             "Application_Status": row.find("cell[9]").text.strip()
             if row.find("cell[9]").text.strip()
             else "N",
-            "Apply_Link": f"https://erp.iitkgp.ac.in/TrainingPlacementSSO/TPJNFViewAction.jsp?jnf_id={jd_args[0]}&com_id={jd_args[1]}&year={jd_args[2]}&rollno={erpcreds.ROLL_NUMBER}",
+            "Apply_Link": f"https://erp.iitkgp.ac.in/TrainingPlacementSSO/TPJNFViewAction.jsp?jnf_id={jnf_id}&com_id={com_id}&year={year}&rollno={erpcreds.ROLL_NUMBER}",
             "Start_Date": row.find("cell[10]").text.strip(),
             "End_Date": row.find("cell[11]").text.strip(),
             "Interview_Date": row.find("cell[12]").text.strip(),
