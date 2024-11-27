@@ -56,7 +56,7 @@ MAX_DATE_LENGTH = 20
 
 
 def limit_word_length(text, max_length):
-    if len(text) > max_length:
+    if text and len(text) > max_length:
         return text[:max_length] + "..."  # Truncate and add "..."
     return text
 
